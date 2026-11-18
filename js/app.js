@@ -19,11 +19,12 @@
       { id: 'realistic', label: 'Realistic' },
     ],
     loadingMessages: [
-      'Mixing the paints…',
-      'Reading your lines…',
-      'Adding colour and light…',
-      'Sprinkling a little magic…',
-      'Almost there…',
+      'Sending drawing to GPU…',
+      'AI analyzing your sketch shape…',
+      'Generating 3D volumetric animation…',
+      'Infusing vibrant cinematic lighting…',
+      'Crafting commemorative BMU frame…',
+      'Finalizing your framed artwork video…',
     ],
   };
 
@@ -121,6 +122,7 @@
   const hasInk = () => inkAmount() >= CONFIG.minInkPoints;
 
   board.addEventListener('pointerdown', (e) => {
+    if (state.view === 'generating') return;
     if (e.button > 0 && e.pointerType === 'mouse') return;
     e.preventDefault();
     board.setPointerCapture(e.pointerId);
@@ -132,6 +134,7 @@
   });
 
   board.addEventListener('pointermove', (e) => {
+    if (state.view === 'generating') return;
     const s = state.current;
     if (!s) return;
     const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
@@ -142,6 +145,7 @@
   });
 
   const endStroke = () => {
+    if (state.view === 'generating') return;
     if (!state.current) return;
     drawTail(state.current);
     state.current = null;
@@ -153,6 +157,7 @@
   /* ---------------- Flow: draw → pause → generate ---------------- */
 
   function onStrokeStart() {
+    if (state.view === 'generating') return;
     cancelPending();
     $('#canvasHint').classList.add('is-hidden');
     $('#liveBadge').classList.add('is-on');
@@ -160,6 +165,7 @@
   }
 
   function onStrokeEnd() {
+    if (state.view === 'generating') return;
     $('#liveBadge').classList.remove('is-on');
     if (hasInk()) scheduleGenerate();
     else setView(state.strokes.length ? 'drawing' : 'empty');
@@ -290,16 +296,15 @@
     if (state.view === 'generating' && view !== 'generating') stopLoading();
     state.view = view;
     outputBody.dataset.view = view;
-    const [text, tone] = STATUS[view];
+    document.body.classList.toggle('is-generating', view === 'generating');
+    const [text, tone] = STATUS[view] || ['Ready', 'idle'];
     $('#statusText').textContent = text;
     $('#statusPill').dataset.tone = tone;
 
     if (view === 'empty') {
-      $('#emptyEmoji').textContent = '🎨';
       $('#emptyTitle').textContent = 'Your artwork will appear here';
       $('#emptyText').textContent = 'Draw on the pad. When you lift your pen, the magic starts.';
     } else if (view === 'drawing') {
-      $('#emptyEmoji').textContent = '✏️';
       $('#emptyTitle').textContent = 'Looking good, keep going!';
       $('#emptyText').textContent = 'Lift your pen when you are done and we will turn it into art.';
     } else if (view === 'generating') {
@@ -313,9 +318,9 @@
     const started = performance.now();
     $('#loadingMsg').textContent = CONFIG.loadingMessages[0];
     state.timers.msg = setInterval(() => {
-      i = Math.min(i + 1, CONFIG.loadingMessages.length - 1);
+      i = (i + 1) % CONFIG.loadingMessages.length;
       $('#loadingMsg').textContent = CONFIG.loadingMessages[i];
-    }, 1600);
+    }, 2500);
     state.timers.elapsed = setInterval(() => {
       $('#elapsed').textContent = ((performance.now() - started) / 1000).toFixed(1);
     }, 100);

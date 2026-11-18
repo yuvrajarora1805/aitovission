@@ -610,18 +610,30 @@ class KioskHandler(SimpleHTTPRequestHandler):
                     "creatorName": creator_name
                 }
 
+                resp_bytes = json.dumps(resp_data).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
                 self.end_headers()
-                self.wfile.write(json.dumps(resp_data).encode("utf-8"))
+                try:
+                    self.wfile.write(resp_bytes)
+                except (BrokenPipeError, ConnectionResetError):
+                    print("[-] Client disconnected before response could be written.")
 
+            except (BrokenPipeError, ConnectionResetError):
+                print("[-] Client aborted or closed connection during generation.")
+                return
             except Exception as e:
                 print(f"[-] Error: {e}")
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                err_msg = json.dumps({"error": str(e)})
-                self.wfile.write(err_msg.encode("utf-8"))
+                try:
+                    err_bytes = json.dumps({"error": str(e)}).encode("utf-8")
+                    self.send_response(500)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(err_bytes)))
+                    self.end_headers()
+                    self.wfile.write(err_bytes)
+                except Exception:
+                    pass
         else:
             self.send_error(404, "Not Found")
 
