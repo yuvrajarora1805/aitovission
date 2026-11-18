@@ -2,7 +2,7 @@
   "5": {
     "inputs": {
       "aspect_ratio": "9:16 (Portrait Widescreen)",
-      "megapixels": 0.25,
+      "megapixels": 0.1,
       "multiple": 32
     },
     "class_type": "ResolutionSelector",
@@ -238,7 +238,7 @@
   },
   "7:131": {
     "inputs": {
-      "prompt": "PHOTOREALISTIC 3D PHYSICAL SCULPTURE AESTHETIC.\nThe drawing rises into a tangible solid 3D sculpture crafted from smooth glazed ceramic and brushed metal, with authentic physical depth, subtle bevels, and realistic contact drop-shadows.\n\nCORE RULE: EXACT SHAPE PRESERVATION & ZERO HALLUCINATIONS.\nThe uploaded image is the sole geometric blueprint. Transform ONLY the exact drawn silhouette into the styled form. Do not invent any extra parts, secondary shapes, decorative clutter, or background elements. The surrounding background must remain completely pristine, pure white paper with soft natural contact shadows directly beneath the object.\n\n4-SECOND PROGRESSION:\n0\u20131 s: the source drawing resting cleanly on the white page.\n1\u20132.5 s: the drawing rises upward, acquiring clean 3D volume, rich surface colors, and smooth sculptural depth strictly within its original boundary.\n2.5\u20133.5 s: authentic materials, soft highlights, and realistic contact drop-shadows settle smoothly onto the solid form.\n3.5\u20134 s: subtle resting posture breathing motion only, remaining perfectly anchored in place.\n\nLOOK AND COMPOSITION:\nFixed camera angle. Pristine studio product lighting, vertical 9:16 portrait. High clarity, completely clean empty white surroundings, razor-sharp isolated subject.",
+      "prompt": "PHOTOREALISTIC 3D PHYSICAL SCULPTURE AESTHETIC.\nThe drawing rises into a tangible solid 3D sculpture crafted from smooth glazed ceramic and brushed metal, with authentic physical depth, subtle bevels, and realistic contact drop-shadows.\n\nCORE RULE: EXACT SHAPE PRESERVATION & ZERO HALLUCINATIONS.\nThe uploaded image is the sole geometric blueprint. Transform ONLY the exact drawn silhouette into the styled form. Do not invent any extra parts, secondary shapes, decorative clutter, or background elements. The surrounding background must remain completely pristine, pure white paper with soft natural contact shadows directly beneath the object.\n\n5-SECOND PROGRESSION:\n0\u20131 s: the source drawing resting cleanly on the white page.\n1\u20133 s: the drawing rises upward, acquiring clean 3D volume, rich surface colors, and smooth sculptural depth strictly within its original boundary.\n3\u20134.5 s: authentic materials, soft highlights, and realistic contact drop-shadows settle smoothly onto the solid form.\n4.5\u20135 s: subtle resting posture breathing motion only, remaining perfectly anchored in place.\n\nLOOK AND COMPOSITION:\nFixed camera angle. Pristine studio product lighting, vertical 9:16 portrait. High clarity, completely clean empty white surroundings, razor-sharp isolated subject.",
       "width": [
         "5",
         0
@@ -288,7 +288,7 @@
   },
   "7:133": {
     "inputs": {
-      "value": 4.0
+      "value": 5.0
     },
     "class_type": "PrimitiveFloat",
     "_meta": {

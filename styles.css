@@ -1,17 +1,17 @@
 :root {
-  --bg: #0d0e1c;
-  --bg-2: #13152a;
-  --panel: #171a33;
-  --panel-2: #1f2342;
-  --line: #2b3058;
-  --text: #f4f4fb;
-  --muted: #a3a8c9;
-  --accent: #8b5cf6;
+  --bg: #000084;
+  --bg-2: #000d6b;
+  --panel: #00127e;
+  --panel-2: #001ba8;
+  --line: #1d35b8;
+  --text: #ffffff;
+  --muted: #a5b4fc;
+  --accent: #2563eb;
   --accent-2: #ec4899;
   --accent-3: #f59e0b;
   --success: #22c55e;
-  --danger: #f43f5e;
-  --grad: linear-gradient(120deg, var(--accent) 0%, var(--accent-2) 55%, var(--accent-3) 100%);
+  --danger: #ef4444;
+  --grad: linear-gradient(135deg, #0022cc 0%, #3b82f6 50%, #ec4899 100%);
   --radius: 20px;
   --font-display: "Fredoka", "Segoe UI Rounded", system-ui, sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
@@ -21,9 +21,9 @@
 html, body { height: 100%; margin: 0; }
 body {
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(139, 92, 246, .18), transparent 60%),
-    radial-gradient(900px 500px at 110% 110%, rgba(236, 72, 153, .14), transparent 60%),
-    var(--bg);
+    radial-gradient(1200px 600px at 50% -10%, rgba(37, 99, 235, .32), transparent 70%),
+    radial-gradient(900px 500px at 100% 100%, rgba(0, 0, 132, .5), transparent 60%),
+    #000084;
   color: var(--text);
   font-family: var(--font-body);
   display: flex;
@@ -39,18 +39,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ---------- Top bar ---------- */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 28px;
+  padding: 12px 28px;
   flex: 0 0 auto;
 }
-.brand { display: flex; align-items: center; gap: 14px; }
-.logo {
-  width: 44px; height: 44px; border-radius: 14px;
-  display: grid; place-items: center;
-  background: var(--grad); font-size: 22px;
-  box-shadow: 0 8px 24px rgba(236, 72, 153, .35);
+.brand { display: flex; align-items: center; gap: 16px; }
+.bmu-brand-logo {
+  height: 48px;
+  max-width: 290px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
-.brand h1 { font-size: 26px; font-weight: 700; }
-.brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.brand-divider {
+  width: 1px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.brand h1 { font-size: 24px; font-weight: 700; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 .topbar-actions { display: flex; align-items: center; gap: 12px; }
 
 .status-pill {
@@ -343,6 +348,21 @@ input[type="range"] { accent-color: var(--accent-2); width: 100px; }
 @keyframes glow { 50% { box-shadow: 0 0 0 1px var(--line), 0 0 90px rgba(236, 72, 153, .55); } }
 @keyframes reveal { from { opacity: 0; transform: scale(.94); filter: blur(12px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes fade { from { opacity: 0; } }
+
+/* ---------- Brand Footer ---------- */
+.brand-footer {
+  flex: 0 0 auto;
+  padding: 6px 28px 12px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #ffffff;
+  opacity: 0.95;
+  text-transform: uppercase;
+  background: transparent;
+}
 
 /* ---------- Smaller screens ---------- */
 @media (max-width: 1100px) {

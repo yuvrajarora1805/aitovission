@@ -7,7 +7,7 @@
   const params = new URLSearchParams(location.search);
 
   const CONFIG = {
-    idleDelayMs: Number(params.get('delay')) || 3000, // pause after pen lift before generating
+    idleDelayMs: Number(params.get('delay')) || 5000, // pause after pen lift before generating (5s)
     minInkPoints: 8,                                   // ignore accidental taps
     eraserScale: 3,
     colors: ['#111827', '#ef4444', '#f97316', '#facc15', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#92400e'],
@@ -344,39 +344,65 @@
     const r = state.result;
     if (!r) return;
     try {
-      const [sketch, art] = await Promise.all([preload(r.sketchUrl), preload(r.imageUrl)]);
-      const W = 2200, H = 1300, S = 1000, top = 170;
+      const [sketch, art, logo] = await Promise.all([
+        preload(r.sketchUrl),
+        preload(r.imageUrl),
+        preload('bmu_saar_logo_web.png').catch(() => null)
+      ]);
+      const W = 2200, H = 1350, S = 960, top = 220;
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
       const g = c.getContext('2d');
 
-      const bg = g.createLinearGradient(0, 0, W, H);
-      bg.addColorStop(0, '#1b1640'); bg.addColorStop(1, '#3a1438');
-      g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      // BMU Deep Royal Blue Background (#000084)
+      g.fillStyle = '#000084';
+      g.fillRect(0, 0, W, H);
 
-      g.fillStyle = '#fff';
-      g.font = '700 64px Fredoka, sans-serif';
+      // Top BMU SAAR Logo
+      if (logo) {
+        const logoW = 520;
+        const logoH = (logo.naturalHeight / logo.naturalWidth) * logoW;
+        g.drawImage(logo, (W - logoW) / 2, 40, logoW, logoH);
+      } else {
+        g.fillStyle = '#fff';
+        g.font = '700 52px Inter, sans-serif';
+        g.textAlign = 'center';
+        g.fillText('BML MUNJAL UNIVERSITY · SAAR', W / 2, 90);
+      }
+
+      // Title & Subtitle
+      g.fillStyle = '#a5b4fc';
+      g.font = '600 24px Inter, sans-serif';
       g.textAlign = 'center';
-      g.fillText('From my sketch to art ✨', W / 2, 105);
+      g.letterSpacing = '3px';
+      g.fillText("FOUNDER'S DAY — THE ESSENCE OF BMU", W / 2, 180);
 
+      // Framing Cards
       const card = (img, x, label) => {
         g.save();
-        g.beginPath(); g.roundRect(x, top, S, S, 36); g.clip();
-        g.fillStyle = '#fff'; g.fillRect(x, top, S, S);
-        g.drawImage(img, x, top, S, S);
+        g.beginPath(); g.roundRect(x, top, S, S, 28); g.clip();
+        g.fillStyle = '#ffffff'; g.fillRect(x, top, S, S);
+        if (img) g.drawImage(img, x, top, S, S);
         g.restore();
-        g.fillStyle = '#c9c6e8';
-        g.font = '600 40px Inter, sans-serif';
-        g.fillText(label, x + S / 2, top + S + 70);
+        g.fillStyle = '#ffffff';
+        g.font = '600 36px Inter, sans-serif';
+        g.fillText(label, x + S / 2, top + S + 55);
       };
-      card(sketch, 66, 'My sketch');
-      card(art, W - 66 - S, 'AI artwork');
+      card(sketch, 90, 'Original Sketch');
+      card(art, W - 90 - S, 'AI Artwork');
 
-      g.font = '600 64px Fredoka, sans-serif';
-      g.fillStyle = '#ec4899';
-      g.fillText('→', W / 2, top + S / 2 + 20);
+      // Arrow
+      g.font = '700 60px Inter, sans-serif';
+      g.fillStyle = '#60a5fa';
+      g.fillText('→', W / 2, top + S / 2);
 
-      downloadUrl(c.toDataURL('image/png'), `sketch-to-art-${stamp()}.png`);
+      // Bottom Footer credit (matching reference image)
+      g.fillStyle = '#ffffff';
+      g.font = '700 34px Inter, sans-serif';
+      g.textAlign = 'center';
+      g.fillText('CREATED BY: VIBHU GNAN', W / 2, H - 35);
+
+      downloadUrl(c.toDataURL('image/png'), `bmu-sketch-to-art-${stamp()}.png`);
     } catch (err) {
       // Usually a cross-origin image without CORS headers taints the canvas.
       console.error(err);

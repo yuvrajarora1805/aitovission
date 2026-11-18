@@ -139,11 +139,11 @@ def build_prompt_for_style(style):
 CORE RULE: EXACT SHAPE PRESERVATION & ZERO HALLUCINATIONS.
 The uploaded image is the sole geometric blueprint. Transform ONLY the exact drawn silhouette into the styled form. Do not invent any extra parts, secondary shapes, decorative clutter, or background elements. The surrounding background must remain completely pristine, pure white paper with soft natural contact shadows directly beneath the object.
 
-4-SECOND PROGRESSION:
+5-SECOND PROGRESSION:
 0–1 s: the source drawing resting cleanly on the white page.
-1–2.5 s: the drawing rises upward, acquiring clean 3D volume, rich surface colors, and smooth sculptural depth strictly within its original boundary.
-2.5–3.5 s: authentic materials, soft highlights, and realistic contact drop-shadows settle smoothly onto the solid form.
-3.5–4 s: subtle resting posture breathing motion only, remaining perfectly anchored in place.
+1–3 s: the drawing rises upward, acquiring clean 3D volume, rich surface colors, and smooth sculptural depth strictly within its original boundary.
+3–4.5 s: authentic materials, soft highlights, and realistic contact drop-shadows settle smoothly onto the solid form.
+4.5–5 s: subtle resting posture breathing motion only, remaining perfectly anchored in place.
 
 LOOK AND COMPOSITION:
 Fixed camera angle. Pristine studio product lighting, vertical 9:16 portrait. High clarity, completely clean empty white surroundings, razor-sharp isolated subject."""
@@ -256,11 +256,11 @@ class KioskHandler(SimpleHTTPRequestHandler):
                         print(f"[+] Injected style directive for: '{style}'")
                         break
 
-                # Enforce optimal generation parameters
+                # Enforce parameters: set 5.0s duration, 0.88 denoise; preserve workflow megapixels if specified
                 if "7:133" in workflow:
-                    workflow["7:133"]["inputs"]["value"] = 4.0
-                if "5" in workflow:
-                    workflow["5"]["inputs"]["megapixels"] = 0.25
+                    workflow["7:133"]["inputs"]["value"] = 5.0
+                if "5" in workflow and "megapixels" not in workflow["5"]["inputs"]:
+                    workflow["5"]["inputs"]["megapixels"] = 0.1
                 if "7:124" in workflow:
                     workflow["7:124"]["inputs"]["denoise"] = 0.88
 
