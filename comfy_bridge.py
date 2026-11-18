@@ -101,12 +101,14 @@ def extract_output_url(history_data):
                 return f"{COMFYUI_HOST}/view?{params}", True
         if "images" in out and out["images"]:
             img = out["images"][0]
+            fname = img["filename"]
             params = urllib.parse.urlencode({
-                "filename": img["filename"],
+                "filename": fname,
                 "subfolder": img.get("subfolder", ""),
                 "type": img.get("type", "output")
             })
-            return f"{COMFYUI_HOST}/view?{params}", False
+            is_vid = any(fname.lower().endswith(ext) for ext in (".mp4", ".webm", ".mov", ".mkv", ".gif"))
+            return f"{COMFYUI_HOST}/view?{params}", is_vid
     return None, False
 
 def build_prompt_for_style(style):
@@ -536,9 +538,18 @@ class KioskHandler(SimpleHTTPRequestHandler):
                         print(f"[+] Injected style directive for: '{style}'")
                         break
 
-                # Enforce parameters: set 5.0s duration, 0.88 denoise; preserve workflow megapixels if specified
+                duration = 5.0
+                if "duration" in fields:
+                    try:
+                        dur_val = float(fields["duration"].decode() if isinstance(fields["duration"], bytes) else fields["duration"])
+                        if dur_val > 0:
+                            duration = dur_val
+                    except Exception:
+                        pass
+
+                # Enforce parameters: set duration (default 5.0s), 0.88 denoise; preserve workflow megapixels
                 if "7:133" in workflow:
-                    workflow["7:133"]["inputs"]["value"] = 5.0
+                    workflow["7:133"]["inputs"]["value"] = duration
                 if "5" in workflow and "megapixels" not in workflow["5"]["inputs"]:
                     workflow["5"]["inputs"]["megapixels"] = 0.1
                 if "7:124" in workflow:
@@ -572,6 +583,23 @@ class KioskHandler(SimpleHTTPRequestHandler):
                     urllib.request.urlretrieve(output_url, raw_filepath)
                 except Exception as e:
                     print(f"[-] Could not cache remote asset: {e}")
+
+                # Magic byte inspection: detect if asset is MP4 video
+                if os.path.exists(raw_filepath):
+                    try:
+                        with open(raw_filepath, "rb") as f_chk:
+                            hdr = f_chk.read(32)
+                        if b"ftyp" in hdr or b"moov" in hdr:
+                            is_video = True
+                            if not raw_filename.endswith(".mp4"):
+                                new_raw_filename = f"raw_{gen_id}.mp4"
+                                new_raw_filepath = os.path.join(OUTPUTS_DIR, new_raw_filename)
+                                os.rename(raw_filepath, new_raw_filepath)
+                                raw_filename = new_raw_filename
+                                raw_filepath = new_raw_filepath
+                                print(f"[+] Verified asset is MP4 video: {raw_filename}")
+                    except Exception as e:
+                        print(f"[-] Magic byte check failed: {e}")
 
                 framed_video_filename = f"framed_{gen_id}.mp4"
                 framed_img_filename = f"framed_{gen_id}.png"
