@@ -18,13 +18,16 @@
  */
 window.SketchAPI = (() => {
   const params = new URLSearchParams(location.search);
+  const isMock = params.get('mock') === '1' || params.get('mock') === 'true';
+  const defaultApiHost = location.hostname || 'localhost';
   const API_CONFIG = {
-    baseUrl: params.get('api') || (location.port === '8000' ? location.origin : ''),   // e.g. 'http://localhost:8000'
+    // Connects to comfy_bridge on port 8000 whether accessed via XAMPP (port 80) or direct
+    baseUrl: params.get('api') || (location.port === '8000' ? location.origin : `http://${defaultApiHost}:8000`),
     mockDelayMs: 3500,
   };
 
   async function generateImage({ drawing, drawingDataUrl, style, signal }) {
-    if (!API_CONFIG.baseUrl) return mockGenerate({ drawingDataUrl, style, signal });
+    if (isMock) return mockGenerate({ drawingDataUrl, style, signal });
 
     const form = new FormData();
     form.append('drawing', drawing, 'drawing.png');
@@ -32,8 +35,22 @@ window.SketchAPI = (() => {
     const creatorName = (document.querySelector('#creatorName')?.textContent || 'YUVRAJ').trim();
     form.append('creator_name', creatorName);
 
-    const res = await fetch(`${API_CONFIG.baseUrl}/generate`, { method: 'POST', body: form, signal });
-    if (!res.ok) throw new Error(`The art server replied ${res.status}. Please try again.`);
+    let res;
+    try {
+      res = await fetch(`${API_CONFIG.baseUrl}/generate`, { method: 'POST', body: form, signal });
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      throw new Error(`Cannot connect to AI art server at ${API_CONFIG.baseUrl}. Please ensure 'python3 comfy_bridge.py' is running in terminal!`);
+    }
+
+    if (!res.ok) {
+      let errText = `The art server replied ${res.status}.`;
+      try {
+        const errJson = await res.json();
+        if (errJson.error) errText = errJson.error;
+      } catch (e) {}
+      throw new Error(errText);
+    }
     const data = await res.json();
     return {
       ...data,
