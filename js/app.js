@@ -227,19 +227,27 @@
   }
 
   function preload(src) {
-    return new Promise((resolve, reject) => {
-      if (src && (src.includes('.mp4') || src.includes('.webm') || src.includes('video/'))) {
+    return new Promise((resolve) => {
+      if (!src) return resolve(null);
+      if (src.includes('.mp4') || src.includes('.webm') || src.includes('video/')) {
         const vid = document.createElement('video');
         vid.crossOrigin = 'anonymous';
-        vid.onloadeddata = () => resolve(vid);
-        vid.onerror = () => resolve(vid);
+        vid.muted = true;
+        vid.playsInline = true;
         vid.src = src;
+        vid.onloadeddata = () => {
+          try { vid.currentTime = 0.1; } catch (e) { resolve(vid); }
+        };
+        vid.onseeked = () => resolve(vid);
+        vid.onerror = () => resolve(vid);
+        vid.load();
+        setTimeout(() => resolve(vid), 2500);
         return;
       }
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Could not load the generated image.'));
+      img.onerror = () => resolve(null);
       img.src = src;
     });
   }
@@ -340,75 +348,95 @@
 
   const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
-  async function downloadCombined() {
+  async function downloadFramedVideo() {
     const r = state.result;
     if (!r) return;
+    const creatorName = ($('#creatorName')?.textContent || 'YUVRAJ').trim().toUpperCase();
+    const vidUrl = r.framedVideoUrl || r.videoUrl;
+    if (vidUrl) {
+      toast('Starting download of framed video…');
+      downloadUrl(vidUrl, `BMU_Framed_Video_${creatorName}_${stamp()}.mp4`);
+    } else {
+      await downloadFramedPhoto();
+    }
+  }
+
+  async function downloadFramedPhoto() {
+    const r = state.result;
+    if (!r) return;
+    const creatorName = ($('#creatorName')?.textContent || 'YUVRAJ').trim().toUpperCase();
+
+    // If server already prepared a sharp framed image:
+    if (r.framedImageUrl) {
+      toast('Downloading framed photo…');
+      downloadUrl(r.framedImageUrl, `BMU_Framed_Photo_${creatorName}_${stamp()}.png`);
+      return;
+    }
+
     try {
-      const [sketch, art, logo] = await Promise.all([
-        preload(r.sketchUrl),
-        preload(r.imageUrl),
-        preload('bmu_saar_logo_web.png').catch(() => null)
-      ]);
-      const W = 2200, H = 1350, S = 960, top = 220;
+      toast('Rendering commemorative frame…');
+      const W = 768, H = 1024;
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
       const g = c.getContext('2d');
 
-      // BMU Deep Royal Blue Background (#000084)
-      g.fillStyle = '#000084';
+      // 1. Royal blue background (#000fa2)
+      g.fillStyle = '#000fa2';
       g.fillRect(0, 0, W, H);
 
-      // Top BMU SAAR Logo
+      // 2. BMU SAAR Logo at top
+      const logo = await preload('bmu_saar_logo_web.png').catch(() => null);
       if (logo) {
-        const logoW = 520;
-        const logoH = (logo.naturalHeight / logo.naturalWidth) * logoW;
-        g.drawImage(logo, (W - logoW) / 2, 40, logoW, logoH);
-      } else {
-        g.fillStyle = '#fff';
-        g.font = '700 52px Inter, sans-serif';
-        g.textAlign = 'center';
-        g.fillText('BML MUNJAL UNIVERSITY · SAAR', W / 2, 90);
+        const lw = 400;
+        const lh = (logo.naturalHeight / logo.naturalWidth) * lw;
+        g.drawImage(logo, (W - lw) / 2, 22, lw, lh);
       }
 
-      // Title & Subtitle
-      g.fillStyle = '#a5b4fc';
-      g.font = '600 24px Inter, sans-serif';
-      g.textAlign = 'center';
-      g.letterSpacing = '3px';
-      g.fillText("FOUNDER'S DAY — THE ESSENCE OF BMU", W / 2, 180);
-
-      // Framing Cards
-      const card = (img, x, label) => {
-        g.save();
-        g.beginPath(); g.roundRect(x, top, S, S, 28); g.clip();
-        g.fillStyle = '#ffffff'; g.fillRect(x, top, S, S);
-        if (img) g.drawImage(img, x, top, S, S);
-        g.restore();
-        g.fillStyle = '#ffffff';
-        g.font = '600 36px Inter, sans-serif';
-        g.fillText(label, x + S / 2, top + S + 55);
-      };
-      card(sketch, 90, 'Original Sketch');
-      card(art, W - 90 - S, 'AI Artwork');
-
-      // Arrow
-      g.font = '700 60px Inter, sans-serif';
-      g.fillStyle = '#60a5fa';
-      g.fillText('→', W / 2, top + S / 2);
-
-      // Bottom Footer credit (matching reference image)
-      const creatorName = ($('#creatorName')?.textContent || 'VIBHU GNAN').trim().toUpperCase();
+      // 3. Central Artwork / Video window
+      const vx = 68, vy = 98, vw = 632, vh = 816;
       g.fillStyle = '#ffffff';
-      g.font = '700 34px Inter, sans-serif';
-      g.textAlign = 'center';
-      g.fillText(`CREATED BY: ${creatorName}`, W / 2, H - 35);
+      g.fillRect(vx, vy, vw, vh);
 
-      downloadUrl(c.toDataURL('image/png'), `bmu-sketch-to-art-${stamp()}.png`);
+      const vidEl = $('#resultVideo');
+      if (vidEl && vidEl.style.display !== 'none' && vidEl.readyState >= 2) {
+        g.drawImage(vidEl, vx, vy, vw, vh);
+      } else if (r.imageUrl) {
+        const art = await preload(r.imageUrl);
+        if (art) g.drawImage(art, vx, vy, vw, vh);
+      }
+
+      // 4. Sketch PIP badge in bottom-left corner
+      if (r.sketchUrl) {
+        const sketch = await preload(r.sketchUrl).catch(() => null);
+        if (sketch) {
+          const bw = 130, bh = 130;
+          const bx = vx + 16, by = vy + vh - bh - 16;
+          g.fillStyle = '#ffffff';
+          g.beginPath();
+          g.roundRect(bx, by, bw, bh, 10);
+          g.fill();
+          g.strokeStyle = '#e2e8f0';
+          g.lineWidth = 2;
+          g.strokeRect(bx, by, bw, bh);
+          g.drawImage(sketch, bx + 10, by + 8, bw - 20, bh - 36);
+          g.fillStyle = '#0f172a';
+          g.font = '700 11px Inter, sans-serif';
+          g.textAlign = 'center';
+          g.fillText('Your sketch', bx + bw / 2, by + bh - 12);
+        }
+      }
+
+      // 5. Creator Name at bottom
+      g.fillStyle = '#ffffff';
+      g.font = '700 24px Inter, sans-serif';
+      g.textAlign = 'center';
+      g.fillText(`CREATED BY: ${creatorName}`, W / 2, 975);
+
+      downloadUrl(c.toDataURL('image/png'), `BMU_Framed_Photo_${creatorName}_${stamp()}.png`);
     } catch (err) {
-      // Usually a cross-origin image without CORS headers taints the canvas.
       console.error(err);
-      toast('Could not combine images, downloading the artwork only.');
-      downloadUrl(r.imageUrl, `ai-artwork-${stamp()}.png`);
+      toast('Downloading artwork directly.');
+      downloadUrl(r.imageUrl, `BMU_Artwork_${stamp()}.png`);
     }
   }
 
@@ -455,8 +483,8 @@
     $('#undoBtn').onclick = undo;
     $('#clearBtn').onclick = clearBoard;
     $('#generateNowBtn').onclick = () => (hasInk() ? generate() : toast('Draw something first!'));
-    $('#downloadBothBtn').onclick = downloadCombined;
-    $('#downloadArtBtn').onclick = () => state.result && downloadUrl(state.result.imageUrl, `ai-artwork-${stamp()}.png`);
+    $('#downloadBothBtn').onclick = downloadFramedVideo;
+    $('#downloadArtBtn').onclick = downloadFramedPhoto;
     $('#regenBtn').onclick = generate;
     $('#retryBtn').onclick = generate;
     $('#newBtn').onclick = clearBoard;
@@ -474,7 +502,7 @@
     function saveCreatorName() {
       if (!nameEl) return;
       let val = nameEl.textContent.trim();
-      if (!val) val = 'VIBHU GNAN';
+      if (!val) val = 'YUVRAJ';
       nameEl.textContent = val;
       localStorage.setItem('bmu_creator_name', val);
     }

@@ -29,12 +29,20 @@ window.SketchAPI = (() => {
     const form = new FormData();
     form.append('drawing', drawing, 'drawing.png');
     form.append('style', style);
+    const creatorName = (document.querySelector('#creatorName')?.textContent || 'YUVRAJ').trim();
+    form.append('creator_name', creatorName);
+
     const res = await fetch(`${API_CONFIG.baseUrl}/generate`, { method: 'POST', body: form, signal });
     if (!res.ok) throw new Error(`The art server replied ${res.status}. Please try again.`);
     const data = await res.json();
     return {
+      ...data,
       imageUrl: data.imageUrl ?? data.image_url,
+      videoUrl: data.videoUrl ?? data.video_url,
+      framedVideoUrl: data.framedVideoUrl ?? data.videoUrl ?? data.imageUrl,
+      framedImageUrl: data.framedImageUrl ?? data.imageUrl,
       shareUrl: data.shareUrl ?? data.share_url,
+      isVideo: Boolean(data.isVideo || (data.videoUrl && (data.videoUrl.includes('.mp4') || data.videoUrl.includes('.webm')))),
     };
   }
 

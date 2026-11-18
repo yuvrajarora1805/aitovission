@@ -12,14 +12,18 @@ import uuid
 import time
 import email
 import socket
+import subprocess
 import urllib.request
 import urllib.parse
 import urllib.error
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from PIL import Image, ImageDraw, ImageFont
 
 COMFYUI_HOST = os.environ.get("COMFYUI_HOST", "http://10.7.5.109:8188")
 PORT = int(os.environ.get("PORT", 8000))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUTS_DIR = os.path.join(BASE_DIR, "outputs")
+os.makedirs(OUTPUTS_DIR, exist_ok=True)
 WORKFLOW_API_PATH = os.path.join(BASE_DIR, "workflow_api.json")
 
 def upload_image_to_comfy(image_bytes, filename="drawing.png"):
@@ -148,6 +152,143 @@ The uploaded image is the sole geometric blueprint. Transform ONLY the exact dra
 LOOK AND COMPOSITION:
 Fixed camera angle. Pristine studio product lighting, vertical 9:16 portrait. High clarity, completely clean empty white surroundings, razor-sharp isolated subject."""
 
+def render_frame_overlay(sketch_path, creator_name, out_overlay_path):
+    FW, FH = 768, 1024
+    VX, VY, VW, VH = 68, 98, 632, 816
+
+    overlay = Image.new("RGBA", (FW, FH), (0, 15, 162, 255))
+    draw = ImageDraw.Draw(overlay)
+
+    # 1. BMU SAAR Logo at top
+    logo_candidates = [
+        os.path.join(BASE_DIR, "bmu_saar_logo_web.png"),
+        os.path.join(BASE_DIR, "BMU_SAAR Logo-White.png")
+    ]
+    for lp in logo_candidates:
+        if os.path.exists(lp):
+            try:
+                logo = Image.open(lp).convert("RGBA")
+                lw = 400
+                lh = int(logo.height * (lw / logo.width))
+                lx = (FW - lw) // 2
+                overlay.paste(logo, (lx, 22), logo)
+                break
+            except Exception as e:
+                print(f"[-] Could not load logo {lp}: {e}")
+
+    # 2. Cutout window for video (set alpha to 0 so video displays cleanly underneath)
+    for y in range(VY, VY + VH):
+        for x in range(VX, VX + VW):
+            overlay.putpixel((x, y), (0, 0, 0, 0))
+
+    # 3. Sketch Picture-in-Picture badge in bottom-left corner of the video window
+    if sketch_path and os.path.exists(sketch_path):
+        try:
+            sk = Image.open(sketch_path).convert("RGBA")
+            bw, bh = 130, 130
+            bx, by = VX + 16, VY + VH - bh - 16
+            card = Image.new("RGBA", (bw, bh), (255, 255, 255, 255))
+            cdraw = ImageDraw.Draw(card)
+            cdraw.rectangle([(0, 0), (bw - 1, bh - 1)], outline=(226, 232, 240, 255), width=2)
+            
+            sk.thumbnail((bw - 20, bh - 36), Image.Resampling.LANCZOS)
+            card.paste(sk, ((bw - sk.width) // 2, 8), sk)
+            
+            font_small = None
+            for fp in [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
+            ]:
+                if os.path.exists(fp):
+                    font_small = ImageFont.truetype(fp, 11)
+                    break
+            if not font_small:
+                font_small = ImageFont.load_default()
+            cdraw.text((bw // 2, bh - 14), "Your sketch", fill=(15, 23, 42, 255), font=font_small, anchor="mm")
+            overlay.paste(card, (bx, by), card)
+        except Exception as e:
+            print(f"[-] PIP badge error: {e}")
+
+    # 4. Creator name at bottom
+    cname = (creator_name or "YUVRAJ").strip().upper()
+    text = f"CREATED BY: {cname}"
+    font_large = None
+    for fp in [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
+    ]:
+        if os.path.exists(fp):
+            font_large = ImageFont.truetype(fp, 24)
+            break
+    if not font_large:
+        font_large = ImageFont.load_default()
+
+    bbox = draw.textbbox((0, 0), text, font=font_large)
+    tw = bbox[2] - bbox[0]
+    draw.text(((FW - tw) // 2, 955), text, fill=(255, 255, 255, 255), font=font_large)
+
+    overlay.save(out_overlay_path)
+    return out_overlay_path
+
+def generate_framed_media(raw_filepath, is_video, sketch_path, creator_name, out_video_path, out_poster_path):
+    overlay_path = os.path.join(OUTPUTS_DIR, f"overlay_temp_{int(time.time()*1000)}.png")
+    render_frame_overlay(sketch_path, creator_name, overlay_path)
+
+    try:
+        if is_video:
+            # Composite video inside 632x816 within 768x1024 royal blue frame
+            filter_str = (
+                "[0:v]scale=632:816:force_original_aspect_ratio=decrease,pad=632:816:(ow-iw)/2:(oh-ih)/2:color=white[vid];"
+                "color=c=0x000fa2:s=768x1024:d=5[bg];"
+                "[bg][vid]overlay=68:98[base];"
+                "[base][1:v]overlay=0:0[out]"
+            )
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", raw_filepath,
+                "-i", overlay_path,
+                "-filter_complex", filter_str,
+                "-map", "[out]",
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "22",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                out_video_path
+            ]
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+
+            # Generate poster image from frame at 1s
+            cmd_poster = [
+                "ffmpeg", "-y",
+                "-i", out_video_path,
+                "-ss", "00:00:01",
+                "-vframes", "1",
+                out_poster_path
+            ]
+            subprocess.run(cmd_poster, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        else:
+            # Composite single image
+            raw_img = Image.open(raw_filepath).convert("RGBA")
+            base = Image.new("RGBA", (768, 1024), (0, 15, 162, 255))
+            
+            # Scale raw image into 632x816
+            raw_img.thumbnail((632, 816), Image.Resampling.LANCZOS)
+            ix = 68 + (632 - raw_img.width) // 2
+            iy = 98 + (816 - raw_img.height) // 2
+            base.paste(raw_img, (ix, iy), raw_img)
+            
+            overlay = Image.open(overlay_path).convert("RGBA")
+            base.paste(overlay, (0, 0), overlay)
+            base.save(out_poster_path, "PNG")
+
+    finally:
+        if os.path.exists(overlay_path):
+            try:
+                os.remove(overlay_path)
+            except Exception:
+                pass
+
 def parse_multipart_data(content_type_header, body_bytes):
     msg = email.message_from_bytes(
         b"Content-Type: " + content_type_header.encode() + b"\r\n\r\n" + body_bytes
@@ -193,6 +334,141 @@ class KioskHandler(SimpleHTTPRequestHandler):
             }
             self.wfile.write(json.dumps(resp, indent=2).encode("utf-8"))
             return
+
+        if clean_path == "/share":
+            parsed_qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            gen_id = parsed_qs.get("id", [""])[0]
+            download_now = parsed_qs.get("download", ["0"])[0] == "1"
+
+            video_filename = f"framed_{gen_id}.mp4"
+            image_filename = f"framed_{gen_id}.png"
+            video_rel = f"/outputs/{video_filename}"
+            image_rel = f"/outputs/{image_filename}"
+            has_video = os.path.exists(os.path.join(OUTPUTS_DIR, video_filename))
+
+            if download_now and has_video:
+                self.send_response(302)
+                self.send_header("Location", video_rel)
+                self.end_headers()
+                return
+
+            video_markup = f"<video src='{video_rel}' poster='{image_rel}' autoplay loop muted playsinline controls></video>" if has_video else f"<img src='{image_rel}' alt='AI Artwork'>"
+            download_video_btn = f"<a href='{video_rel}' download='BMU_Framed_Artwork_{gen_id}.mp4' class='btn btn-primary'>⬇ Download Framed Video (.mp4)</a>" if has_video else ""
+
+            html_page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BMU Founder's Day — Your Framed AI Artwork</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #060814;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 18px 14px 40px;
+    }}
+    .header {{
+      text-align: center;
+      margin-bottom: 16px;
+    }}
+    .header img {{
+      max-width: 290px;
+      height: auto;
+      margin-bottom: 6px;
+    }}
+    .subtitle {{
+      color: #93c5fd;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }}
+    .player-wrap {{
+      width: 100%;
+      max-width: 390px;
+      background: #000fa2;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      margin-bottom: 20px;
+    }}
+    .player-wrap video, .player-wrap img {{
+      display: block;
+      width: 100%;
+      height: auto;
+    }}
+    .actions {{
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 390px;
+    }}
+    .btn {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 15px 20px;
+      border-radius: 99px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      text-align: center;
+      transition: transform .15s, opacity .15s;
+    }}
+    .btn:active {{ transform: scale(0.97); opacity: 0.9; }}
+    .btn-primary {{
+      background: linear-gradient(135deg, #ec4899, #8b5cf6 55%, #3b82f6);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.45);
+    }}
+    .btn-secondary {{
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }}
+    .footer-note {{
+      margin-top: 24px;
+      color: #64748b;
+      font-size: 12px;
+      text-align: center;
+    }}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/bmu_saar_logo_web.png" alt="BML Munjal University / SAAR" onerror="this.style.display='none'">
+    <div class="subtitle">Founder's Day · Commemorative Artwork</div>
+  </div>
+
+  <div class="player-wrap">
+    {video_markup}
+  </div>
+
+  <div class="actions">
+    {download_video_btn}
+    <a href="{image_rel}" download="BMU_Framed_Photo_{gen_id}.png" class="btn btn-secondary">🖼️ Download Framed Photo (.png)</a>
+  </div>
+
+  <div class="footer-note">
+    BML Munjal University — A Hero Group Initiative<br>
+    The Essence of BMU · 2026
+  </div>
+</body>
+</html>"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(html_page.encode("utf-8"))
+            return
         
         # Serve index.html and other static files
         super().do_GET()
@@ -213,6 +489,10 @@ class KioskHandler(SimpleHTTPRequestHandler):
                 drawing_bytes = fields.get("drawing")
                 style_bytes = fields.get("style", b"realistic")
                 style = style_bytes.decode() if isinstance(style_bytes, bytes) else str(style_bytes)
+                creator_name_raw = fields.get("creator_name", b"YUVRAJ")
+                creator_name = creator_name_raw.decode("utf-8", errors="ignore") if isinstance(creator_name_raw, bytes) else str(creator_name_raw)
+                if not creator_name.strip():
+                    creator_name = "YUVRAJ"
 
                 if not drawing_bytes:
                     self.send_error(400, "Missing 'drawing' file")
@@ -281,11 +561,53 @@ class KioskHandler(SimpleHTTPRequestHandler):
 
                 print(f"[+] Completed! Output: {output_url} (isVideo={is_video})")
 
+                # 6. Download raw output and generate framed media
+                gen_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}"
+                ext = ".mp4" if is_video else ".png"
+                raw_filename = f"raw_{gen_id}{ext}"
+                raw_filepath = os.path.join(OUTPUTS_DIR, raw_filename)
+
+                print(f"[+] Caching generated asset locally: {raw_filename}...")
+                try:
+                    urllib.request.urlretrieve(output_url, raw_filepath)
+                except Exception as e:
+                    print(f"[-] Could not cache remote asset: {e}")
+
+                framed_video_filename = f"framed_{gen_id}.mp4"
+                framed_img_filename = f"framed_{gen_id}.png"
+                framed_video_path = os.path.join(OUTPUTS_DIR, framed_video_filename)
+                framed_img_path = os.path.join(OUTPUTS_DIR, framed_img_filename)
+                framed_ready = False
+
+                if os.path.exists(raw_filepath):
+                    try:
+                        print(f"[+] Generating commemorative framed media for '{creator_name}'...")
+                        generate_framed_media(
+                            raw_filepath=raw_filepath,
+                            is_video=is_video,
+                            sketch_path=local_debug_path,
+                            creator_name=creator_name,
+                            out_video_path=framed_video_path,
+                            out_poster_path=framed_img_path
+                        )
+                        framed_ready = True
+                        print(f"[+] Framed media successfully rendered!")
+                    except Exception as e:
+                        print(f"[-] Framed media generation error: {e}")
+
+                local_ip = get_local_ip()
+                share_url = f"http://{local_ip}:{PORT}/share?id={gen_id}"
+
                 resp_data = {
-                    "imageUrl": output_url,
-                    "videoUrl": output_url if is_video else None,
+                    "imageUrl": f"/outputs/{framed_img_filename}" if framed_ready else output_url,
+                    "videoUrl": f"/outputs/{framed_video_filename}" if (framed_ready and is_video) else (output_url if is_video else None),
+                    "framedVideoUrl": f"/outputs/{framed_video_filename}" if (framed_ready and is_video) else None,
+                    "framedImageUrl": f"/outputs/{framed_img_filename}" if framed_ready else None,
+                    "rawVideoUrl": output_url if is_video else None,
+                    "rawImageUrl": output_url if not is_video else None,
                     "isVideo": is_video,
-                    "shareUrl": output_url
+                    "shareUrl": share_url,
+                    "creatorName": creator_name
                 }
 
                 self.send_response(200)

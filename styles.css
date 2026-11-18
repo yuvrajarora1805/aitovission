@@ -267,7 +267,7 @@ input[type="range"] { accent-color: var(--accent-2); width: 100px; }
   width: min(100cqw, 100cqh * 0.75);
   height: min(100cqh, 100cqw * 1.33);
   max-width: 480px;
-  background: #000084;
+  background: #000fa2;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
