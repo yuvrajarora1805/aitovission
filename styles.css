@@ -315,14 +315,53 @@ input[type="range"] { accent-color: var(--accent-2); width: 100px; }
 }
 .bmu-frame-bottom {
   flex: 0 0 auto;
-  padding: 8px 0 2px;
-  text-align: center;
+  padding: 8px 6px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 2px;
   color: #ffffff;
   text-transform: uppercase;
+}
+.creator-name-input {
+  outline: none;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.45);
+  padding: 1px 4px;
+  cursor: text;
+  transition: all 0.2s;
+  min-width: 50px;
+  display: inline-block;
+  color: #ffffff;
+}
+.creator-name-input:hover {
+  border-bottom-color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+.creator-name-input:focus {
+  border-bottom: 2px solid #60a5fa;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+.edit-name-icon {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, transform 0.15s;
+}
+.edit-name-icon:hover {
+  color: #ffffff;
+  transform: scale(1.15);
 }
 .sketch-thumb {
   position: absolute; left: 12px; bottom: 12px; margin: 0;

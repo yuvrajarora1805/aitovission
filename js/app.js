@@ -397,10 +397,11 @@
       g.fillText('→', W / 2, top + S / 2);
 
       // Bottom Footer credit (matching reference image)
+      const creatorName = ($('#creatorName')?.textContent || 'VIBHU GNAN').trim().toUpperCase();
       g.fillStyle = '#ffffff';
       g.font = '700 34px Inter, sans-serif';
       g.textAlign = 'center';
-      g.fillText('CREATED BY: VIBHU GNAN', W / 2, H - 35);
+      g.fillText(`CREATED BY: ${creatorName}`, W / 2, H - 35);
 
       downloadUrl(c.toDataURL('image/png'), `bmu-sketch-to-art-${stamp()}.png`);
     } catch (err) {
@@ -463,6 +464,41 @@
     $('#qrClose').onclick = closeQR;
     $('#qrModal').onclick = (e) => { if (e.target.id === 'qrModal') closeQR(); };
     $('#fullscreenBtn').onclick = toggleFullscreen;
+
+    // Creator Name Editing
+    const nameEl = $('#creatorName');
+    const editBtn = $('#editNameBtn');
+    const savedName = localStorage.getItem('bmu_creator_name');
+    if (savedName && nameEl) nameEl.textContent = savedName;
+
+    function saveCreatorName() {
+      if (!nameEl) return;
+      let val = nameEl.textContent.trim();
+      if (!val) val = 'VIBHU GNAN';
+      nameEl.textContent = val;
+      localStorage.setItem('bmu_creator_name', val);
+    }
+
+    if (nameEl) {
+      nameEl.addEventListener('blur', saveCreatorName);
+      nameEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          nameEl.blur();
+        }
+      });
+    }
+
+    if (editBtn && nameEl) {
+      editBtn.addEventListener('click', () => {
+        nameEl.focus();
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(nameEl);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+    }
   }
 
   function updateSizePreview() {
@@ -516,7 +552,7 @@
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.target.matches('input, textarea')) return;
+    if (e.target.matches('input, textarea, [contenteditable="true"]') || e.target.isContentEditable) return;
     const k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); }
     else if (e.ctrlKey || e.metaKey || e.altKey) return;
