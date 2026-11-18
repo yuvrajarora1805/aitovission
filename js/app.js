@@ -7,7 +7,7 @@
   const params = new URLSearchParams(location.search);
 
   const CONFIG = {
-    idleDelayMs: Number(params.get('delay')) || 2000, // pause after pen lift before generating (2s)
+    idleDelayMs: Number(params.get('delay')) || 3000, // pause after pen lift before generating (3s)
     minInkPoints: 3,                                   // quick stroke detection
     eraserScale: 3,
     colors: ['#111827', '#ef4444', '#f97316', '#facc15', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#92400e'],
