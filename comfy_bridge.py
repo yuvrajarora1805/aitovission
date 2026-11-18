@@ -596,15 +596,17 @@ class KioskHandler(SimpleHTTPRequestHandler):
                         print(f"[-] Framed media generation error: {e}")
 
                 local_ip = get_local_ip()
+                client_host = self.headers.get("Host") or f"{local_ip}:{PORT}"
+                base_url = f"http://{client_host}"
                 share_url = f"http://{local_ip}:{PORT}/share?id={gen_id}"
 
                 resp_data = {
-                    "imageUrl": f"/outputs/{framed_img_filename}" if framed_ready else output_url,
-                    "videoUrl": f"/outputs/{framed_video_filename}" if (framed_ready and is_video) else (output_url if is_video else None),
-                    "framedVideoUrl": f"/outputs/{framed_video_filename}" if (framed_ready and is_video) else None,
-                    "framedImageUrl": f"/outputs/{framed_img_filename}" if framed_ready else None,
-                    "rawVideoUrl": output_url if is_video else None,
-                    "rawImageUrl": output_url if not is_video else None,
+                    "imageUrl": f"{base_url}/outputs/{framed_img_filename}" if framed_ready else (f"{base_url}/outputs/{raw_filename}" if not is_video else output_url),
+                    "videoUrl": f"{base_url}/outputs/{framed_video_filename}" if (framed_ready and is_video) else f"{base_url}/outputs/{raw_filename}",
+                    "framedVideoUrl": f"{base_url}/outputs/{framed_video_filename}" if (framed_ready and is_video) else None,
+                    "framedImageUrl": f"{base_url}/outputs/{framed_img_filename}" if framed_ready else None,
+                    "rawVideoUrl": f"{base_url}/outputs/{raw_filename}" if (os.path.exists(raw_filepath) and is_video) else output_url,
+                    "rawImageUrl": f"{base_url}/outputs/{raw_filename}" if (os.path.exists(raw_filepath) and not is_video) else output_url,
                     "isVideo": is_video,
                     "shareUrl": share_url,
                     "creatorName": creator_name

@@ -52,12 +52,21 @@ window.SketchAPI = (() => {
       throw new Error(errText);
     }
     const data = await res.json();
+
+    function resolveUrl(url) {
+      if (!url) return url;
+      if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+      const base = API_CONFIG.baseUrl.replace(/\/+$/, '');
+      const path = url.replace(/^\/+/, '');
+      return `${base}/${path}`;
+    }
+
     return {
       ...data,
-      imageUrl: data.imageUrl ?? data.image_url,
-      videoUrl: data.videoUrl ?? data.video_url,
-      framedVideoUrl: data.framedVideoUrl ?? data.videoUrl ?? data.imageUrl,
-      framedImageUrl: data.framedImageUrl ?? data.imageUrl,
+      imageUrl: resolveUrl(data.imageUrl ?? data.image_url),
+      videoUrl: resolveUrl(data.videoUrl ?? data.video_url),
+      framedVideoUrl: resolveUrl(data.framedVideoUrl ?? data.videoUrl ?? data.imageUrl),
+      framedImageUrl: resolveUrl(data.framedImageUrl ?? data.imageUrl),
       shareUrl: data.shareUrl ?? data.share_url,
       isVideo: Boolean(data.isVideo || (data.videoUrl && (data.videoUrl.includes('.mp4') || data.videoUrl.includes('.webm')))),
     };

@@ -7,8 +7,8 @@
   const params = new URLSearchParams(location.search);
 
   const CONFIG = {
-    idleDelayMs: Number(params.get('delay')) || 5000, // pause after pen lift before generating (5s)
-    minInkPoints: 8,                                   // ignore accidental taps
+    idleDelayMs: Number(params.get('delay')) || 2000, // pause after pen lift before generating (2s)
+    minInkPoints: 3,                                   // quick stroke detection
     eraserScale: 3,
     colors: ['#111827', '#ef4444', '#f97316', '#facc15', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899', '#92400e'],
     styles: [
@@ -171,16 +171,18 @@
     else setView(state.strokes.length ? 'drawing' : 'empty');
   }
 
-  function cancelPending() {
+  function cancelPending(abortNet = false) {
     clearTimeout(state.timers.idle);
     clearInterval(state.timers.countdown);
-    if (state.abort) state.abort.abort();
-    state.abort = null;
-    state.generation++;
+    if (abortNet) {
+      if (state.abort) state.abort.abort();
+      state.abort = null;
+      state.generation++;
+    }
   }
 
   function scheduleGenerate() {
-    cancelPending();
+    cancelPending(false);
     setView('countdown');
     const fill = $('#ringFill');
     fill.style.setProperty('--dur', CONFIG.idleDelayMs + 'ms');
@@ -198,9 +200,11 @@
   }
 
   async function generate() {
-    cancelPending();
+    clearTimeout(state.timers.idle);
+    clearInterval(state.timers.countdown);
     if (!hasInk()) return;
 
+    state.generation++;
     const gen = state.generation;
     const controller = new AbortController();
     state.abort = controller;
@@ -218,7 +222,12 @@
         signal: controller.signal,
       });
       if (gen !== state.generation) return;
-      await preload(res.imageUrl);
+      if (res.imageUrl) {
+        await Promise.race([
+          preload(res.imageUrl),
+          new Promise((r) => setTimeout(r, 1200))
+        ]);
+      }
       if (gen !== state.generation) return;
       state.result = { ...res, sketchUrl };
       showResult();
@@ -260,21 +269,30 @@
 
   function showResult() {
     const r = state.result;
-    const isVid = r.isVideo || (r.imageUrl && (r.imageUrl.includes('.mp4') || r.imageUrl.includes('.webm') || r.imageUrl.includes('video/')));
+    if (!r) return;
+    const vidUrl = r.framedVideoUrl || r.videoUrl;
+    const isVid = Boolean(r.isVideo || (vidUrl && (vidUrl.includes('.mp4') || vidUrl.includes('.webm'))));
     const vidEl = $('#resultVideo');
-    if (isVid && vidEl) {
-      $('#resultImg').style.display = 'none';
+    const imgEl = $('#resultImg');
+
+    if (isVid && vidEl && vidUrl) {
+      imgEl.style.display = 'none';
       vidEl.style.display = 'block';
-      vidEl.src = r.videoUrl || r.imageUrl;
-      vidEl.play().catch(() => {});
+      vidEl.crossOrigin = 'anonymous';
+      vidEl.src = vidUrl;
+      vidEl.load();
+      vidEl.play().catch((e) => console.log('Autoplay info:', e));
     } else {
-      if (vidEl) vidEl.style.display = 'none';
-      $('#resultImg').style.display = 'block';
-      $('#resultImg').src = r.imageUrl;
+      if (vidEl) {
+        vidEl.pause();
+        vidEl.style.display = 'none';
+      }
+      imgEl.style.display = 'block';
+      imgEl.src = r.framedImageUrl || r.imageUrl;
     }
     $('#sketchThumb').src = r.sketchUrl;
     $('#modalSketch').src = r.sketchUrl;
-    $('#modalArt').src = r.imageUrl;
+    $('#modalArt').src = r.framedImageUrl || r.imageUrl;
     $('#shareUrl').textContent = r.shareUrl || '';
     renderQR($('#qrInline'), r.shareUrl, 4);
     renderQR($('#qrBig'), r.shareUrl, 8);
@@ -557,7 +575,7 @@
   }
 
   function clearBoard() {
-    cancelPending();
+    cancelPending(true);
     state.strokes = [];
     state.current = null;
     state.result = null;
