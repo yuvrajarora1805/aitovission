@@ -270,7 +270,8 @@
   function showResult() {
     const r = state.result;
     if (!r) return;
-    const vidUrl = r.framedVideoUrl || r.videoUrl;
+    // On kiosk screen, display clean raw artwork inside the HTML frame window so it doesn't double-frame
+    const vidUrl = r.rawVideoUrl || (r.isVideo ? r.videoUrl : null);
     const isVid = Boolean(r.isVideo || (vidUrl && (vidUrl.includes('.mp4') || vidUrl.includes('.webm'))));
     const vidEl = $('#resultVideo');
     const imgEl = $('#resultImg');
@@ -288,7 +289,7 @@
         vidEl.style.display = 'none';
       }
       imgEl.style.display = 'block';
-      imgEl.src = r.framedImageUrl || r.imageUrl;
+      imgEl.src = r.rawImageUrl || r.imageUrl;
     }
     $('#sketchThumb').src = r.sketchUrl;
     $('#modalSketch').src = r.sketchUrl;
@@ -528,6 +529,26 @@
       if (!val) val = 'YUVRAJ';
       nameEl.textContent = val;
       localStorage.setItem('bmu_creator_name', val);
+
+      if (state.result && state.result.genId) {
+        const apiBase = (window.SketchAPI && window.SketchAPI.config && window.SketchAPI.config.baseUrl) || '';
+        fetch(`${apiBase}/reframe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: state.result.genId, creator_name: val })
+        })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.framedVideoUrl) {
+            state.result.framedVideoUrl = data.framedVideoUrl;
+          }
+          if (data && data.framedImageUrl) {
+            state.result.framedImageUrl = data.framedImageUrl;
+            $('#modalArt').src = data.framedImageUrl;
+          }
+        })
+        .catch((e) => console.log('Reframe sync notice:', e));
+      }
     }
 
     if (nameEl) {

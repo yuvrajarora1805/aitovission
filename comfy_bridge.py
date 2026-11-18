@@ -17,7 +17,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 COMFYUI_HOST = os.environ.get("COMFYUI_HOST", "http://10.7.5.109:8188")
 PORT = int(os.environ.get("PORT", 8000))
@@ -172,6 +172,7 @@ def render_frame_overlay(sketch_path, creator_name, out_overlay_path):
                 logo = Image.open(lp).convert("RGBA")
                 lw = 400
                 lh = int(logo.height * (lw / logo.width))
+                logo = logo.resize((lw, lh), Image.Resampling.LANCZOS)
                 lx = (FW - lw) // 2
                 overlay.paste(logo, (lx, 22), logo)
                 break
@@ -238,9 +239,9 @@ def generate_framed_media(raw_filepath, is_video, sketch_path, creator_name, out
 
     try:
         if is_video:
-            # Composite video inside 632x816 within 768x1024 royal blue frame
+            # Composite video covering 632x816 within 768x1024 royal blue frame (cover fit, no white bars)
             filter_str = (
-                "[0:v]scale=632:816:force_original_aspect_ratio=decrease,pad=632:816:(ow-iw)/2:(oh-ih)/2:color=white[vid];"
+                "[0:v]scale=632:816:force_original_aspect_ratio=increase,crop=632:816[vid];"
                 "color=c=0x000fa2:s=768x1024:d=5[bg];"
                 "[bg][vid]overlay=68:98[base];"
                 "[base][1:v]overlay=0:0[out]"
@@ -270,15 +271,11 @@ def generate_framed_media(raw_filepath, is_video, sketch_path, creator_name, out
             ]
             subprocess.run(cmd_poster, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         else:
-            # Composite single image
+            # Composite single image covering 632x816 without borders
             raw_img = Image.open(raw_filepath).convert("RGBA")
+            fitted = ImageOps.fit(raw_img, (632, 816), method=Image.Resampling.LANCZOS)
             base = Image.new("RGBA", (768, 1024), (0, 15, 162, 255))
-            
-            # Scale raw image into 632x816
-            raw_img.thumbnail((632, 816), Image.Resampling.LANCZOS)
-            ix = 68 + (632 - raw_img.width) // 2
-            iy = 98 + (816 - raw_img.height) // 2
-            base.paste(raw_img, (ix, iy), raw_img)
+            base.paste(fitted, (68, 98), fitted)
             
             overlay = Image.open(overlay_path).convert("RGBA")
             base.paste(overlay, (0, 0), overlay)
@@ -503,10 +500,13 @@ class KioskHandler(SimpleHTTPRequestHandler):
                 # 1. Upload sketch to ComfyUI
                 filename = f"sketch_{int(time.time())}.png"
                 
-                # Save a local copy for debugging so you can inspect the exact image sent
+                # Save a local copy for debugging and re-framing
                 local_debug_path = os.path.join(BASE_DIR, "last_drawing.png")
                 with open(local_debug_path, "wb") as f_debug:
                     f_debug.write(drawing_bytes)
+                sketch_saved_path = os.path.join(OUTPUTS_DIR, f"sketch_{gen_id}.png")
+                with open(sketch_saved_path, "wb") as f_sk:
+                    f_sk.write(drawing_bytes)
 
                 upload_res = upload_image_to_comfy(drawing_bytes, filename=filename)
                 uploaded_name = upload_res.get("name", filename)
@@ -613,7 +613,7 @@ class KioskHandler(SimpleHTTPRequestHandler):
                         generate_framed_media(
                             raw_filepath=raw_filepath,
                             is_video=is_video,
-                            sketch_path=local_debug_path,
+                            sketch_path=sketch_saved_path,
                             creator_name=creator_name,
                             out_video_path=framed_video_path,
                             out_poster_path=framed_img_path
@@ -629,15 +629,16 @@ class KioskHandler(SimpleHTTPRequestHandler):
                 share_url = f"http://{local_ip}:{PORT}/share?id={gen_id}"
 
                 resp_data = {
-                    "imageUrl": f"{base_url}/outputs/{framed_img_filename}" if framed_ready else (f"{base_url}/outputs/{raw_filename}" if not is_video else output_url),
-                    "videoUrl": f"{base_url}/outputs/{framed_video_filename}" if (framed_ready and is_video) else f"{base_url}/outputs/{raw_filename}",
-                    "framedVideoUrl": f"{base_url}/outputs/{framed_video_filename}" if (framed_ready and is_video) else None,
-                    "framedImageUrl": f"{base_url}/outputs/{framed_img_filename}" if framed_ready else None,
+                    "imageUrl": f"{base_url}/outputs/{raw_filename}" if not is_video else output_url,
+                    "videoUrl": f"{base_url}/outputs/{raw_filename}" if is_video else None,
                     "rawVideoUrl": f"{base_url}/outputs/{raw_filename}" if (os.path.exists(raw_filepath) and is_video) else output_url,
                     "rawImageUrl": f"{base_url}/outputs/{raw_filename}" if (os.path.exists(raw_filepath) and not is_video) else output_url,
+                    "framedVideoUrl": f"{base_url}/outputs/{framed_video_filename}" if (framed_ready and is_video) else None,
+                    "framedImageUrl": f"{base_url}/outputs/{framed_img_filename}" if framed_ready else None,
                     "isVideo": is_video,
                     "shareUrl": share_url,
-                    "creatorName": creator_name
+                    "creatorName": creator_name,
+                    "genId": gen_id
                 }
 
                 resp_bytes = json.dumps(resp_data).encode("utf-8")
@@ -661,6 +662,60 @@ class KioskHandler(SimpleHTTPRequestHandler):
                     self.send_header("Content-Type", "application/json")
                     self.send_header("Content-Length", str(len(err_bytes)))
                     self.end_headers()
+                    self.wfile.write(err_bytes)
+                except Exception:
+                    pass
+        elif clean_path == "/reframe":
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length)
+                req_data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                gen_id = req_data.get("id", "")
+                new_name = (req_data.get("creator_name") or "YUVRAJ").strip().upper()
+
+                raw_video_path = os.path.join(OUTPUTS_DIR, f"raw_{gen_id}.mp4")
+                raw_img_path = os.path.join(OUTPUTS_DIR, f"raw_{gen_id}.png")
+                is_video = os.path.exists(raw_video_path)
+                raw_filepath = raw_video_path if is_video else raw_img_path
+                framed_video_path = os.path.join(OUTPUTS_DIR, f"framed_{gen_id}.mp4")
+                framed_img_path = os.path.join(OUTPUTS_DIR, f"framed_{gen_id}.png")
+                sketch_path = os.path.join(OUTPUTS_DIR, f"sketch_{gen_id}.png")
+                if not os.path.exists(sketch_path):
+                    sketch_path = os.path.join(BASE_DIR, "last_drawing.png")
+
+                if os.path.exists(raw_filepath):
+                    generate_framed_media(
+                        raw_filepath=raw_filepath,
+                        is_video=is_video,
+                        sketch_path=sketch_path,
+                        creator_name=new_name,
+                        out_video_path=framed_video_path,
+                        out_poster_path=framed_img_path
+                    )
+                    print(f"[+] Re-framed media for gen_id '{gen_id}' with name '{new_name}'")
+
+                local_ip = get_local_ip()
+                client_host = self.headers.get("Host") or f"{local_ip}:{PORT}"
+                base_url = f"http://{client_host}"
+                reframe_res = {
+                    "success": True,
+                    "framedVideoUrl": f"{base_url}/outputs/framed_{gen_id}.mp4?t={int(time.time())}" if is_video else None,
+                    "framedImageUrl": f"{base_url}/outputs/framed_{gen_id}.png?t={int(time.time())}"
+                }
+                resp_bytes = json.dumps(reframe_res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self.wfile.write(resp_bytes)
+            except Exception as e:
+                print(f"[-] Reframe error: {e}")
+                err_bytes = json.dumps({"error": str(e)}).encode("utf-8")
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(err_bytes)))
+                self.end_headers()
+                try:
                     self.wfile.write(err_bytes)
                 except Exception:
                     pass
