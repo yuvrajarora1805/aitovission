@@ -322,6 +322,11 @@ class KioskHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         clean_path = self.path.split("?")[0]
+        if clean_path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
+            return
+
         if clean_path in ("/status", "/health"):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -498,7 +503,8 @@ class KioskHandler(SimpleHTTPRequestHandler):
                     return
 
                 # 1. Upload sketch to ComfyUI
-                filename = f"sketch_{int(time.time())}.png"
+                gen_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}"
+                filename = f"sketch_{gen_id}.png"
                 
                 # Save a local copy for debugging and re-framing
                 local_debug_path = os.path.join(BASE_DIR, "last_drawing.png")
@@ -573,7 +579,6 @@ class KioskHandler(SimpleHTTPRequestHandler):
                 print(f"[+] Completed! Output: {output_url} (isVideo={is_video})")
 
                 # 6. Download raw output and generate framed media
-                gen_id = f"{int(time.time())}_{uuid.uuid4().hex[:6]}"
                 ext = ".mp4" if is_video else ".png"
                 raw_filename = f"raw_{gen_id}{ext}"
                 raw_filepath = os.path.join(OUTPUTS_DIR, raw_filename)
