@@ -1,0 +1,409 @@
+{
+  "5": {
+    "inputs": {
+      "aspect_ratio": "9:16 (Portrait Widescreen)",
+      "megapixels": 0.1,
+      "multiple": 32
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "Resolution Selector",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "6": {
+    "inputs": {
+      "image": "Dino_Pals_Episode_02_Starting_Frame.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "UPLOAD YOUR DRAWING",
+      "cnr_id": "comfy-core",
+      "ver": "0.3.0"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "video/Sketch_Lines_to_Reality/clip",
+      "format": "auto",
+      "format.codec": "auto",
+      "codec": "auto",
+      "video": [
+        "7:130",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "SAVE EXACT SKETCH TRANSFORMATION",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:119": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:120": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:121": {
+    "inputs": {
+      "samples": [
+        "7:125",
+        0
+      ],
+      "vae": [
+        "7:120",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeAudio",
+    "_meta": {
+      "title": "VAE Decode Audio",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:122": {
+    "inputs": {
+      "samples": [
+        "7:125",
+        0
+      ],
+      "vae": [
+        "7:119",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:123": {
+    "inputs": {
+      "sampler_name": "res_multistep"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:124": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": [
+        "7:136",
+        0
+      ],
+      "denoise": 1.0,
+      "model": [
+        "7:135",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:125": {
+    "inputs": {
+      "noise": [
+        "7:129",
+        0
+      ],
+      "guider": [
+        "7:126",
+        0
+      ],
+      "sampler": [
+        "7:123",
+        0
+      ],
+      "sigmas": [
+        "7:124",
+        0
+      ],
+      "latent_image": [
+        "7:131",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:126": {
+    "inputs": {
+      "model": [
+        "7:135",
+        0
+      ],
+      "conditioning": [
+        "7:131",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "Basic Guider",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:127": {
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:128": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:129": {
+    "inputs": {
+      "noise_seed": 757358688084724
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:130": {
+    "inputs": {
+      "fps": 24.0,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "codec": "none",
+      "images": [
+        "7:122",
+        0
+      ],
+      "audio": [
+        "7:121",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:131": {
+    "inputs": {
+      "prompt": "EXACT SKETCH-LINES-TO-REALITY TRANSFORMATION \u2014 IMAGE-TO-VIDEO.\n\nCORE RULE: ABSOLUTE ZERO EXTRA LINES OR OBJECTS.\nThe uploaded drawing is the sole authority. The drawn strokes define the exact subject and geometry. Turn ONLY THOSE EXACT STROKES into solid, realistic forms. Do not invent, hallucinate, or add ANY extra lines, ghost lines, stray strokes, background scenery, decorative objects, or secondary items. Treat all empty/white paper as strictly empty negative space\u2014do not fill blank paper with any textures, doodles, scenery, or phantom elements. Do not redesign the figure or add a different character.\n\nSTRICT LINE ISOLATION & NOISE REJECTION:\nRender exclusively what is drawn. If there are 5 lines, only those 5 lines become 3D forms. Do not generate double outlines, echo strokes, floating particles, sketch halos, or extra limbs/props. If the user drew a simple stick figure, it remains a clean, volumetric stick figure with no added clothes, muscles, shoes, or facial features unless explicitly drawn. If an outline is closed, only the interior gains volume; the surrounding canvas must remain completely clean and empty.\n\nTRACE THE DRAWING FIRST:\nMentally trace every visible stroke in the uploaded image. Preserve exact topology: line connections, start and end points, curves, angles, proportions, and positions. Do not add an object or feature unless its outline is clearly visible in the source sketch.\n\nPIXEL/COMPOSITION & BACKGROUND LOCK:\nKeep the paper/background clean and stationary. The camera viewpoint is fixed. The transformed subject remains locked to the exact screen coordinates of the source drawing. Do not center an off-center drawing. Do not add a floor, horizon, sky, grass, furniture, or room environment. Blank space must remain clean blank space.\n\nWHAT \u201cBECOME REAL\u201d MEANS:\nThe existing ink strokes rise directly from the surface and thicken into three-dimensional realistic forms with natural depth, physical volume, and realistic contact shadows. Realism comes entirely from the surface lighting, material shading, and depth of the drawn lines\u2014NOT by adding new elements, accessories, or background objects.\n\nANIMATE ONLY AFTER THE SHAPES ARE ESTABLISHED:\nOnce established, apply only subtle, stationary physical motion (such as gentle breathing or a subtle resting posture shift). Do not make the subject move away, walk, run, jump, or interact with un-drawn items. Nonliving objects remain completely stationary.\n\n7-SECOND TIMELINE, ONE CONTINUOUS SHOT:\n0\u20131 s: show the uploaded drawing exactly as it is, perfectly clean and isolated on the page.\n1\u20134 s: the existing ink lines themselves rise from the page and turn into three-dimensional realistic forms, strictly following the original outlines with zero stray lines.\n4\u20135.5 s: realistic materials, depth, and clean physical shadows settle onto those exact forms; all background areas remain clean and undisturbed.\n5.5\u20137 s: subtle natural stationary breathing/motion only; finish with the transformed scene perfectly aligned to the source drawing.\n\nCAMERA AND LOOK:\nFixed camera only. No pans, no tilts, no cuts. Realistic lighting, physically accurate contact shadows on the paper, stable exposure. Vertical 9:16 portrait.\n\nSTRICTLY FORBIDDEN:\nNo extra lines; no stray strokes; no ghost lines; no phantom outlines; no double borders; no hallucinated objects; no added props; no background scenery (no sky, grass, rooms, clouds, trees, floors, or furniture); no extra limbs, fingers, eyes, or clothing; no decorative doodles; no floating particles, dust, or smoke; no text, captions, watermark, or borders. Blank paper must stay blank.\n\nSUCCESS TEST:\nThe viewer should see only the user's exact drawing brought to life as a 3D physical object resting on the page, with zero extra lines or objects anywhere in the frame.\n\nAUDIO: no narration or dialogue; no music; optional very subtle room ambience only.",
+      "width": [
+        "5",
+        0
+      ],
+      "height": [
+        "5",
+        1
+      ],
+      "length": [
+        "7:132",
+        1
+      ],
+      "clip": [
+        "7:128",
+        0
+      ],
+      "vae": [
+        "7:119",
+        0
+      ],
+      "first_frame": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3ImageToVideo",
+    "_meta": {
+      "title": "MiniMax H3 Image to Video",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:132": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "7:133",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "Math Expression",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:133": {
+    "inputs": {
+      "value": 7.0
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "Float (duration)",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:134": {
+    "inputs": {
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+      "strength_model": 1.0,
+      "model": [
+        "7:127",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:135": {
+    "inputs": {
+      "switch": [
+        "7:139",
+        0
+      ],
+      "on_false": [
+        "7:127",
+        0
+      ],
+      "on_true": [
+        "7:134",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "If/Else Switch (Model)",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:136": {
+    "inputs": {
+      "switch": [
+        "7:139",
+        0
+      ],
+      "on_false": [
+        "7:137",
+        0
+      ],
+      "on_true": [
+        "7:138",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "If/Else Switch (Steps)",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:137": {
+    "inputs": {
+      "value": 20
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Int",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:138": {
+    "inputs": {
+      "value": 8
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Int",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:139": {
+    "inputs": {
+      "value": true
+    },
+    "class_type": "PrimitiveBoolean",
+    "_meta": {
+      "title": "Boolean (Enable Lightning LoRA)",
+      "cnr_id": "comfy-core",
+      "ver": "0.33.0"
+    }
+  },
+  "7:143": {
+    "inputs": {
+      "batch_index": 123,
+      "length": 1,
+      "image": [
+        "7:122",
+        0
+      ]
+    },
+    "class_type": "ImageFromBatch",
+    "_meta": {
+      "title": "Get Image from Batch",
+      "cnr_id": "comfy-core",
+      "ver": "0.3.0"
+    }
+  }
+}

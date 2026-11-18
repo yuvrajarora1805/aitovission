@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+*$py.class
+last_drawing.png
+sketch-to-art.zip
+*.log
