@@ -44,6 +44,7 @@
     generation: 0,      // bumped on every new request so stale responses are ignored
     abort: null,
     result: null,       // { imageUrl, shareUrl, sketchUrl }
+    creatorName: '',    // Current artist name asked from user
     timers: {},
   };
 
@@ -199,10 +200,56 @@
     state.timers.idle = setTimeout(generate, CONFIG.idleDelayMs);
   }
 
+  async function promptNameIfNeeded() {
+    let name = (state.creatorName || $('#artistInputHeader')?.value || '').trim();
+    if (name) {
+      state.creatorName = name.toUpperCase();
+      if ($('#creatorName')) $('#creatorName').textContent = state.creatorName;
+      if ($('#artistInputHeader')) $('#artistInputHeader').value = state.creatorName;
+      return state.creatorName;
+    }
+
+    return new Promise((resolve) => {
+      const modal = $('#nameModal');
+      const input = $('#nameInputModal');
+      const form = $('#nameForm');
+      const skipBtn = $('#nameSkipBtn');
+
+      modal.hidden = false;
+      input.value = '';
+      setTimeout(() => input.focus(), 80);
+
+      const submitName = (val) => {
+        modal.hidden = true;
+        let finalName = (val || '').trim().toUpperCase();
+        if (!finalName) finalName = 'BMU CREATOR';
+        state.creatorName = finalName;
+        if ($('#artistInputHeader')) $('#artistInputHeader').value = finalName;
+        if ($('#creatorName')) $('#creatorName').textContent = finalName;
+        form.onsubmit = null;
+        skipBtn.onclick = null;
+        resolve(finalName);
+      };
+
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        submitName(input.value);
+      };
+
+      skipBtn.onclick = (e) => {
+        e.preventDefault();
+        submitName('');
+      };
+    });
+  }
+
   async function generate() {
     clearTimeout(state.timers.idle);
     clearInterval(state.timers.countdown);
     if (!hasInk()) return;
+
+    // Ask artist for their name if not yet entered
+    const creatorName = await promptNameIfNeeded();
 
     state.generation++;
     const gen = state.generation;
@@ -220,6 +267,7 @@
         drawingDataUrl: sketchUrl,
         style: state.style,
         signal: controller.signal,
+        creatorName,
       });
       if (gen !== state.generation) return;
       if (res.imageUrl) {
@@ -375,7 +423,7 @@
   async function downloadFramedVideo() {
     const r = state.result;
     if (!r) return;
-    const creatorName = ($('#creatorName')?.textContent || 'YUVRAJ').trim().toUpperCase();
+    const creatorName = state.creatorName || ($('#creatorName')?.textContent || 'BMU CREATOR').trim().toUpperCase();
     const vidUrl = r.framedVideoUrl || r.videoUrl;
     if (vidUrl) {
       toast('Starting download of framed video…');
@@ -388,7 +436,7 @@
   async function downloadFramedPhoto() {
     const r = state.result;
     if (!r) return;
-    const creatorName = ($('#creatorName')?.textContent || 'YUVRAJ').trim().toUpperCase();
+    const creatorName = state.creatorName || ($('#creatorName')?.textContent || 'BMU CREATOR').trim().toUpperCase();
 
     // If server already prepared a sharp framed image:
     if (r.framedImageUrl) {
@@ -517,18 +565,26 @@
     $('#qrModal').onclick = (e) => { if (e.target.id === 'qrModal') closeQR(); };
     $('#fullscreenBtn').onclick = toggleFullscreen;
 
+    // Artist Name Header Input
+    const artistHeaderInput = $('#artistInputHeader');
+    if (artistHeaderInput) {
+      artistHeaderInput.addEventListener('input', (e) => {
+        state.creatorName = e.target.value.trim().toUpperCase();
+        if ($('#creatorName')) $('#creatorName').textContent = state.creatorName || 'BMU CREATOR';
+      });
+    }
+
     // Creator Name Editing
     const nameEl = $('#creatorName');
     const editBtn = $('#editNameBtn');
-    const savedName = localStorage.getItem('bmu_creator_name');
-    if (savedName && nameEl) nameEl.textContent = savedName;
 
     function saveCreatorName() {
       if (!nameEl) return;
-      let val = nameEl.textContent.trim();
-      if (!val) val = 'YUVRAJ';
+      let val = nameEl.textContent.trim().toUpperCase();
+      if (!val) val = 'BMU CREATOR';
       nameEl.textContent = val;
-      localStorage.setItem('bmu_creator_name', val);
+      state.creatorName = val;
+      if ($('#artistInputHeader')) $('#artistInputHeader').value = val;
 
       if (state.result && state.result.genId) {
         const apiBase = (window.SketchAPI && window.SketchAPI.config && window.SketchAPI.config.baseUrl) || '';
@@ -600,6 +656,10 @@
     state.strokes = [];
     state.current = null;
     state.result = null;
+    state.creatorName = '';
+    if ($('#artistInputHeader')) $('#artistInputHeader').value = '';
+    if ($('#creatorName')) $('#creatorName').textContent = 'BMU CREATOR';
+    if ($('#nameModal')) $('#nameModal').hidden = true;
     redraw();
     closeQR();
     $('#canvasHint').classList.remove('is-hidden');

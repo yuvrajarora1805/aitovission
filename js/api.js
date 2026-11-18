@@ -26,14 +26,14 @@ window.SketchAPI = (() => {
     mockDelayMs: 3500,
   };
 
-  async function generateImage({ drawing, drawingDataUrl, style, signal }) {
+  async function generateImage({ drawing, drawingDataUrl, style, signal, creatorName }) {
     if (isMock) return mockGenerate({ drawingDataUrl, style, signal });
 
     const form = new FormData();
     form.append('drawing', drawing, 'drawing.png');
     form.append('style', style);
-    const creatorName = (document.querySelector('#creatorName')?.textContent || 'YUVRAJ').trim();
-    form.append('creator_name', creatorName);
+    const nameToSend = (creatorName || document.querySelector('#artistInputHeader')?.value || document.querySelector('#creatorName')?.textContent || 'BMU CREATOR').trim().toUpperCase();
+    form.append('creator_name', nameToSend);
 
     let res;
     try {

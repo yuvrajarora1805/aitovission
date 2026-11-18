@@ -213,7 +213,7 @@ def render_frame_overlay(sketch_path, creator_name, out_overlay_path):
             print(f"[-] PIP badge error: {e}")
 
     # 4. Creator name at bottom
-    cname = (creator_name or "YUVRAJ").strip().upper()
+    cname = (creator_name or "BMU CREATOR").strip().upper()
     text = f"CREATED BY: {cname}"
     font_large = None
     for fp in [
@@ -493,10 +493,10 @@ class KioskHandler(SimpleHTTPRequestHandler):
                 drawing_bytes = fields.get("drawing")
                 style_bytes = fields.get("style", b"realistic")
                 style = style_bytes.decode() if isinstance(style_bytes, bytes) else str(style_bytes)
-                creator_name_raw = fields.get("creator_name", b"YUVRAJ")
+                creator_name_raw = fields.get("creator_name", b"BMU CREATOR")
                 creator_name = creator_name_raw.decode("utf-8", errors="ignore") if isinstance(creator_name_raw, bytes) else str(creator_name_raw)
                 if not creator_name.strip():
-                    creator_name = "YUVRAJ"
+                    creator_name = "BMU CREATOR"
 
                 if not drawing_bytes:
                     self.send_error(400, "Missing 'drawing' file")
@@ -676,7 +676,7 @@ class KioskHandler(SimpleHTTPRequestHandler):
                 body_bytes = self.rfile.read(content_length)
                 req_data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
                 gen_id = req_data.get("id", "")
-                new_name = (req_data.get("creator_name") or "YUVRAJ").strip().upper()
+                new_name = (req_data.get("creator_name") or "BMU CREATOR").strip().upper()
 
                 raw_video_path = os.path.join(OUTPUTS_DIR, f"raw_{gen_id}.mp4")
                 raw_img_path = os.path.join(OUTPUTS_DIR, f"raw_{gen_id}.png")
