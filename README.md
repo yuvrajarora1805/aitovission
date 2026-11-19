@@ -35,17 +35,30 @@ Visitors can instantly scan a QR code with their mobile phone to download and ta
 
 ## 🛠️ Prerequisites
 
-### On the Kiosk Machine (Linux / Kali / Ubuntu / Windows):
-1. **Python 3.9+** and **Git**
-2. **System Packages**: `ffmpeg` (for video compositing) and TrueType fonts:
-   ```bash
-   sudo apt update && sudo apt install -y ffmpeg fonts-dejavu-core python3-pip
+### On the Kiosk Machine:
+
+#### 🪟 Windows Setup (Quick 1-Click):
+1. **Install Python 3.9+** from [python.org](https://www.python.org/downloads/) *(check **"Add python.exe to PATH"** during install)*.
+2. **Install FFmpeg** on Windows using PowerShell:
+   ```powershell
+   winget install Gyan.FFmpeg
    ```
-3. **Python Dependencies** via `requirements.txt`:
+   *(Or download from [gyan.dev/ffmpeg](https://www.gyan.dev/ffmpeg/builds/) and add its `bin` folder to Windows Environment Variables PATH).*
+3. **Run the Automated Installer**:
+   Double-click `setup.bat` (or in CMD run: `pip install -r requirements.txt`).
+4. **Launch the Bridge**:
+   Double-click `run_bridge.bat` (or in CMD run: `python comfy_bridge.py`).
+
+#### 🐧 Linux (Debian / Kali / Ubuntu):
+1. **Run the automated setup script**:
    ```bash
-   pip install -r requirements.txt
+   chmod +x setup.sh && ./setup.sh
    ```
-   *(Or run `./setup.sh` on Linux to install everything automatically).*
+   *(Or manually: `sudo apt install -y ffmpeg fonts-dejavu-core && pip install -r requirements.txt`)*
+2. **Launch the Bridge**:
+   ```bash
+   python3 comfy_bridge.py
+   ```
 
 ### On the GPU Machine (Running ComfyUI):
 * ComfyUI with MiniMax H3 Image-to-Video custom nodes installed.

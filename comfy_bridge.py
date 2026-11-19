@@ -154,6 +154,27 @@ The uploaded image is the sole geometric blueprint. Transform ONLY the exact dra
 LOOK AND COMPOSITION:
 Fixed camera angle. Pristine studio product lighting, vertical 9:16 portrait. High clarity, completely clean empty white surroundings, razor-sharp isolated subject."""
 
+def get_font(size):
+    font_candidates = [
+        # Linux paths
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        # Windows standard paths
+        r"C:\Windows\Fonts\arialbd.ttf",
+        r"C:\Windows\Fonts\arial.ttf",
+        r"C:\Windows\Fonts\segoeuib.ttf",
+        # Cross-platform names for PIL font lookup
+        "arialbd.ttf",
+        "arial.ttf",
+        "DejaVuSans-Bold.ttf",
+    ]
+    for fp in font_candidates:
+        try:
+            return ImageFont.truetype(fp, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
 def render_frame_overlay(sketch_path, creator_name, out_overlay_path):
     FW, FH = 768, 1024
     VX, VY, VW, VH = 68, 98, 632, 816
@@ -197,16 +218,7 @@ def render_frame_overlay(sketch_path, creator_name, out_overlay_path):
             sk.thumbnail((bw - 20, bh - 36), Image.Resampling.LANCZOS)
             card.paste(sk, ((bw - sk.width) // 2, 8), sk)
             
-            font_small = None
-            for fp in [
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-                "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
-            ]:
-                if os.path.exists(fp):
-                    font_small = ImageFont.truetype(fp, 11)
-                    break
-            if not font_small:
-                font_small = ImageFont.load_default()
+            font_small = get_font(11)
             cdraw.text((bw // 2, bh - 14), "Your sketch", fill=(15, 23, 42, 255), font=font_small, anchor="mm")
             overlay.paste(card, (bx, by), card)
         except Exception as e:
@@ -215,16 +227,7 @@ def render_frame_overlay(sketch_path, creator_name, out_overlay_path):
     # 4. Creator name at bottom
     cname = (creator_name or "BMU CREATOR").strip().upper()
     text = f"CREATED BY: {cname}"
-    font_large = None
-    for fp in [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
-    ]:
-        if os.path.exists(fp):
-            font_large = ImageFont.truetype(fp, 24)
-            break
-    if not font_large:
-        font_large = ImageFont.load_default()
+    font_large = get_font(24)
 
     bbox = draw.textbbox((0, 0), text, font=font_large)
     tw = bbox[2] - bbox[0]
