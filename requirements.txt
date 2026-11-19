@@ -1,0 +1,2 @@
+# Python dependencies for Sketch-to-Art Kiosk Bridge
+Pillow>=10.0.0

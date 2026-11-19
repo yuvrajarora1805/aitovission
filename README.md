@@ -36,15 +36,16 @@ Visitors can instantly scan a QR code with their mobile phone to download and ta
 ## 🛠️ Prerequisites
 
 ### On the Kiosk Machine (Linux / Kali / Ubuntu / Windows):
-1. **Python 3.9+**
-2. **FFmpeg** (used for high-speed video compositing):
+1. **Python 3.9+** and **Git**
+2. **System Packages**: `ffmpeg` (for video compositing) and TrueType fonts:
    ```bash
-   sudo apt update && sudo apt install -y ffmpeg
+   sudo apt update && sudo apt install -y ffmpeg fonts-dejavu-core python3-pip
    ```
-3. **Pillow (PIL)**:
+3. **Python Dependencies** via `requirements.txt`:
    ```bash
-   pip install pillow
+   pip install -r requirements.txt
    ```
+   *(Or run `./setup.sh` on Linux to install everything automatically).*
 
 ### On the GPU Machine (Running ComfyUI):
 * ComfyUI with MiniMax H3 Image-to-Video custom nodes installed.
