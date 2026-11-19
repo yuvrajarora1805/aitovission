@@ -19,7 +19,7 @@ import urllib.error
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-COMFYUI_HOST = os.environ.get("COMFYUI_HOST", "http://10.7.5.109:8188")
+COMFYUI_HOST = os.environ.get("COMFYUI_HOST", "http://10.7.5.109:8190")
 PORT = int(os.environ.get("PORT", 8000))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUTS_DIR = os.path.join(BASE_DIR, "outputs")
